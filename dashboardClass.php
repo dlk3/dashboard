@@ -201,7 +201,7 @@
 		 * as the page background image
 		 */
 		public function randomImage() {
-			$background_images_path = 'backgrounds';
+			$background_images_path = '/opt/dashboard/backgrounds';
 			
 			$background_images = glob($background_images_path . '/*.{jpg,jpeg,png,gif}', GLOB_BRACE);
 			return($background_images[array_rand($background_images)]);
