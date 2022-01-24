@@ -110,7 +110,7 @@ window.addEventListener('load', function() {
 //  Populate the weather section of the page
 function populateWeather(weather_data) {
 	
-	#console.log(weather_data);
+	// console.log(weather_data);
 	
 	//  Populate the current-conditions div with weather_data
 	document.getElementById("current-icon").src = weather_data.current.icon;
