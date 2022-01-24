@@ -5,6 +5,7 @@
 backgrounds/*
 calendarSources.php
 darksky-icons
+get-weather.log
 humidity.json
 js
 vendor
