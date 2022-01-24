@@ -110,13 +110,13 @@ window.addEventListener('load', function() {
 //  Populate the weather section of the page
 function populateWeather(weather_data) {
 	
-	console.log(weather_data);
+	#console.log(weather_data);
 	
 	//  Populate the current-conditions div with weather_data
 	document.getElementById("current-icon").src = weather_data.current.icon;
 	
+	var temp_trend = "";
 	if (weather_data.current.temperature) {
-		var temp_trend = "";
 		if (weather_data.current.temperature > weather_data.hourly[1].temperature) {
 			temp_trend = " and falling";
 		} else if (weather_data.current.temperature < weather_data.hourly[1].temperature) {
@@ -128,7 +128,6 @@ function populateWeather(weather_data) {
 		weather_data.current.temperature = '?';
 	}
 	if (!weather_data.current.wind_speed) weather_data.current.wind_speed = '?';
-	if (!weather_data.current.wind_temperature) weather_data.current.wind_temperature = '?';
 	var html_str = "<strong>" + weather_data.current.temperature + "&deg;</strong>" +
 		"<span>" + temp_trend + "</span>" +
 		"<span>Wind: " + weather_data.current.wind_speed + " mph</span>";
