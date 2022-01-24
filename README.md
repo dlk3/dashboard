@@ -11,7 +11,8 @@ The system components in this repository are:
 + <code>schedule.css</code> - stylesheet with styles for the schedule portion of the page.
 + <code>dashboardScripts.js</code> - Javascript functions that populate the weather forecast section of the page with weather data.
 + <code>weather.css</code> - stylesheet with styles for the weather portion of the page.
-+ <code>get-weather</code> - A Python script which runs once every 30 minutes to fetch weather data from the NOAA web services and write it into a file.  That file is then used as the source for weather data by the functions in <code>calendarScripts.js</code>.  The script requires three arguments on the command line, the latitude of your location, the longitude, and the full path to the file where it should write its output.
++ <code>get-weather</code> - A Python script which in a contuous loop fetching weather data updates from the NOAA web services and writing it into a file every thirty minutes.  That file is then used as the source for weather data by the functions in <code>calendarScripts.js</code>.  The script requires three arguments on the command line, the latitude of your location, the longitude, the full path to the file where it should write its output, and the full path to a file where it can write log messages.
++ <code>get-weather.service.template</code> - a systemd service definition template that can be used to set up the get-weather script to start at system boot.  This file requires customization and renaming before use.
 + <code>humidity.php</code> - a web service that receives humidity and temperature information from an IoT humidity sensor and writes it to a file on disk.  <code>dashboardClass.php</code> reads this file and includes the information it contains in the page.
 + <code>composer.json</code> - use the <code>composer</code> utility to install the <code>johngrogg/ics-parser</code> PHP module that is used by <code>dashboardClass.php</code>.
 
@@ -39,7 +40,7 @@ This is the way I did it on my web server.  Adjust as required:
 + I uploaded the CanvasJS utility as <code>/opt/dashboard/js/canvasjs/canvasjs.min.js</code>
 + I changed into the <code>/opt/dashboard</code> directory and ran the command <code>composer install</code>.  This created the <code>/opt/dashboard/vendor</code> directory containing the ics-parser PHP module.
 + I created a <code>/opt/dashboard/calendarSources.php</code> file containing the URLs of all the calendars I want to consolidate into the schedule, based on the template.
-+ I created a cron configuration file to execute the <code>get-weather</code> script every thirty minutes, writing its output to <code>/opt/dashboard/weather_data.json</code>.
++ I set up the get-weather.service definition to run the <code>get-weather</code> script as a system service writing its output to <code>/opt/dashboard/weather_data.json</code>.
 + I added the <code>Alias</code> and <code>Directory</code> configuration statements to my Apache server configuration for the <code>/opt/dashboard</code> directory.
 <pre>
         # dashboard - a calendar and weather data wall screen, secured with basic authentication
