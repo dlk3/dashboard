@@ -1,0 +1,359 @@
+#!/usr/bin/env python
+
+#################################################################################
+#  Copyright (C) 2022  David King <dave@daveking.com>
+#
+#  This Source Code Form is subject to the terms of the Mozilla Public License,
+#  v. 2.0.  If a copy of the MPL was not distbuted with this file, You can
+#  obtain one at https://mozilla.org/MPL/2.0/.
+#################################################################################
+#  Fetch weather data from the NOAA web site for a specific location
+#  and update a JSON object stored on disk with that information.
+#
+#  The output format used here is designed specifically to match another app
+#  I have that consumes this data.  NOAA provides much more data than this
+#  script outputs.
+#
+#  NOAA updates their current observations roughly every 30 minutes and forecasts
+#  about once an hour.
+#################################################################################
+
+from astral import LocationInfo				# dnf install python3-astral
+from astral.sun import sun
+import datetime
+from geopy.distance import great_circle		# dnf install python3-geopy
+import isodate								# dnf install python3-isodate
+import json
+import pytz									# dnf install python3-pytz
+import requests								# dnf install python3-requests
+import sys
+
+#  Logging messages
+def log(message):
+	timestamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+	print(timestamp, message)
+	
+#  Celcius to fahrenheit
+def degC2degF(degC):
+	try:
+		return round((degC * 9/5) + 32)
+	except Exception as e:
+		log('degC2DegF function threw an exception for value "{}"'.format(degC))
+		log(e)
+		return None
+
+#  Kilometers per hour to miles per hour
+def kmph2mph(kmph):
+	try:
+		return round(kmph * 0.621371)
+	except Exception as e:
+		log('kmph2mph function threw an exception for value "{}"'.format(kmph))
+		log(e)
+		return None
+		
+#  Parse the ISO8601 date strings with interval/duration specs that NOAA uses
+#  in the hourly data
+def parseInterval(time_str, tz_string=None):
+	"""
+	time_str must be an ISO8601-compliant time string, optionally including a
+	duration specification, for example: 2020-04-10T16:00:00-00:00/P6DT22H
+	          
+	This function returns a tuple containing two datetime objects. If a duration
+	specification was part of the time_str provided, then "start time" and "end time"
+	datetime objects will be returned.  If the time_str was just a simple date and time,
+	without any duration specification, then the first element of the tuple will be
+	the "start time" datetime object and the second element will be null.
+	"""
+	list = []
+	split_time_str = time_str.split('/')
+	list.append(isodate.parse_datetime(split_time_str[0]))
+	if len(split_time_str) == 2:
+		list.append(list[0] + isodate.parse_duration(split_time_str[1]))
+	else:
+		list.append(None)
+	return list
+
+#  Get latitude, longitude and weather_data_file from the command line
+if len(sys.argv) < 4:
+	print('Please provide the latitude, longitude, and file name values on the command line:')
+	print('\t{} latitude longitude filename'.format(sys.argv[0]))
+	exit(1)
+try:
+	latitude = float(sys.argv[1])
+	longitude = float(sys.argv[2])
+	weather_data_file = sys.argv[3]
+except Exception as e:
+	print('Latitude and longitude must be valid floating point numbers')
+	print('\t{} latitude longitude filename'.format(sys.argv[0]))
+	exit(1)
+
+#  Read in the stored JSON object, if it exists
+try:
+	with open(weather_data_file, 'r') as f:
+		weather_data = json.load(f)
+except FileNotFoundError:
+	weather_data = {}
+
+#  Get the NOAA location info, timezone and forecast URL links for this location 
+#  from their "points" service, based on the lat/long.
+#
+#  See this page for info on NOAA's User-Agent string requirements:
+#  https://www.weather.gov/documentation/services-web-api
+headers = {
+	'User-Agent': '(David King, dave@daveking.com)',
+	'Accept': 'application/geo+json',
+	'Cache-Control': 'no-cache'
+}
+url = 'https://api.weather.gov/points/{},{}'.format(latitude, longitude)
+response = requests.get(url, headers=headers)
+if response.status_code == 200:
+	r = response.json()
+
+	#  Start populating the JSON object
+	weather_data['latitude'] = latitude
+	weather_data['longitude'] = longitude
+	weather_data['timezone'] = r['properties']['timeZone']
+	weather_data['observationStationListURL'] = r['properties']['observationStations']
+	weather_data['forecastURL'] = r['properties']['forecast']
+	weather_data['forecastGridDataURL'] = r['properties']['forecastGridData']
+	weather_data['alertsURL'] = 'https://api.weather.gov/alerts?point={},{}'.format(latitude, longitude)
+	
+	#  Calculate the UTC offset for this timezone
+	tz_now = datetime.datetime.now(pytz.timezone(weather_data['timezone']))
+	weather_data['tz_offset'] = tz_now.utcoffset().total_seconds() / 3600
+	
+	#  Create a Python tzinfo object for later use
+	local_tz = datetime.timezone(datetime.timedelta(hours=weather_data['tz_offset']))
+	
+	#  Put a timestamp into the JSON object
+	weather_data['generated'] = datetime.datetime.now(local_tz).strftime('%Y-%m-%dT%H:%M:%S%z')
+	
+else:
+	log('Status code {} returned for {}'.format(response.status_code, url))
+	log('Unable to continue, no weather data updated')
+	exit(response.status_code)
+
+#  Get the list of NOAA observation stations associated with this location
+#  and figure out which one is closest to us
+response = requests.get(weather_data['observationStationListURL'], headers=headers)
+if response.status_code == 200:
+	r = response.json()
+	nearest = -1
+	for feature in r['features']:
+		distance = great_circle((latitude, longitude), (feature['geometry']['coordinates'][1], feature['geometry']['coordinates'][0]))
+		if nearest == -1 or distance < nearest:
+			nearest = distance
+			weather_data['observationStationURL'] = feature['id']
+else:
+	log('Status code {} returned for {}'.format(response.status_code, weather_data['observationStationListURL']))
+	log('Unable to continue, no weather data updated')
+	exit(response.status_code)
+
+#--------------------------   C u r r e n t l y   --------------------------#
+
+#  Get the current conditions from that observation station
+response = requests.get(weather_data['observationStationURL'] + '/observations/latest', headers=headers)
+if response.status_code == 200:
+	r = response.json()
+	if 'current' not in weather_data:
+		weather_data['current'] = {}
+	weather_data['current']['icon'] = r['properties']['icon'].split('?')[0] + "?size=large"
+	weather_data['current']['description'] = r['properties']['textDescription']
+	weather_data['current']['temperature'] = degC2degF(r['properties']['temperature']['value'])
+	weather_data['current']['wind_speed'] = kmph2mph(r['properties']['windSpeed']['value'])
+	need_current_forecasts = True  #  We'll get them from NOAA's daily data
+else:
+	log('Status code {} returned for {}'.format(response.status_code, weather_data['observationStationURL'] + '/observations/latest'))
+	log('Unable to continue, no weather data updated')
+	exit(response.status_code)
+
+#------------------------------   D a i l y   ------------------------------#
+
+#  Define a location for the astral function that calculates sunrise and sunset
+astral_location = LocationInfo('dummy_name', 'dummy_region', weather_data['timezone'], latitude, longitude)
+		
+#  Get the daily forecasts for the next week for this location
+response = requests.get(weather_data['forecastURL'], headers=headers)
+if response.status_code == 200:
+	r = response.json()
+	#print(json.dumps(r['properties']['periods'], indent=4))
+	daily_data = []
+	for days in range(0, 7):
+		day = {}
+		d = datetime.datetime.now(local_tz) + datetime.timedelta(days=days)
+		day['date'] = d.strftime('%Y-%m-%d')
+		the_sun = sun(astral_location.observer, date=d)
+		day['sunrise'] = the_sun['sunrise'].strftime('%Y-%m-%dT%H:%M:%S%z')
+		day['sunset'] = the_sun['sunset'].strftime('%Y-%m-%dT%H:%M:%S%z')
+		
+		for period in r['properties']['periods']:
+			period_starttime = datetime.datetime.strptime(period['startTime'], '%Y-%m-%dT%H:%M:%S%z')
+			period_endtime = datetime.datetime.strptime(period['endTime'], '%Y-%m-%dT%H:%M:%S%z')
+			if period_starttime.strftime('%Y-%m-%d') == day['date']:
+				#  Update current forecasts (take first ones we find)
+				if need_current_forecasts:
+				
+					#  TODO: I'm not sure whether these are nulls or empty
+					#  strings when no data is returned and I want to find out
+					if period['shortForecast'] and period['detailedForecast']:
+						if period['shortForecast'] != '' and period['detailedForecast'] != '':
+							weather_data['current']['shortForecast'] = period['shortForecast']
+							weather_data['current']['detailedForecast'] = period['detailedForecast']
+							need_current_forecasts = False
+						else:
+							log('NOAA returned period[\'shortForecast\'] or period[\'detailedForecast\'] as an empty string in the daily data')
+							log(period)
+					else:
+						log('NOAA returned period[\'shortForecast\'] or period[\'detailedForecast\'] as null in the daily data')
+						log(period)
+				
+				#  Day-time data
+				if period['isDaytime']:
+					day['icon'] = period['icon'].split('?')[0] + "?size=large"
+					day['high'] = period['temperature']
+				#  Night-time data
+				else:
+					if 'icon' not in day:
+						day['icon'] = period['icon'].split('?')[0] + "?size=large"
+					#  If there wasn't any day-time period data for this date,
+					#  use the current temp as the high
+					if 'high' not in day:
+						day['high'] = weather_data['current']['temperature']
+					day['low'] = period['temperature']
+				
+				#  Swap high and low if they are reversed
+				if ('high', 'low') in day:
+					if day['high'] < day['low']:
+						t = day['high']
+						day['high'] = day['low']
+						day['low'] = t
+		
+		#  Fill in any missing values with data from previous run
+		if 'daily' in weather_data:
+			for old_day in weather_data['daily']:
+				if old_day['date'] == day['date']:
+					if 'icon' not in day and 'icon' in old_day:
+						day['icon'] = old_day['icon']
+					if 'high' not in day and 'high' in old_day:
+						day['high'] = old_day['high']
+					if 'low' not in day and 'low' in old_day:
+						day['low'] = old_day['low']
+					break
+		
+		#  Add the day's data to the array			
+		daily_data.append(day)
+
+	#  Update the array in the JSON object
+	weather_data['daily'] = daily_data
+
+else:
+	log('Status code {} returned for {}'.format(response.status_code, weather_data['forecastURL']))
+	log('The daily weather forcasts have not been updated. Some other data elements may have been updated however.')
+
+#-----------------------------   H o u r l y   -----------------------------#
+
+#  Get the hourly forecasts for the next 48 hours for this location
+response = requests.get(weather_data['forecastGridDataURL'], headers=headers)
+if response.status_code == 200:
+	r = response.json()
+	if 'hourly' not in weather_data:
+		weather_data['hourly'] = {}
+	hourly_data = []
+	for hours in range(0, 48):
+		hour = {}
+		d = datetime.datetime.now(local_tz) + datetime.timedelta(hours=hours)
+		hour['time'] = d.strftime('%Y-%m-%dT%H:00:00%z')
+		
+		#  Load defaults from stored JSON object
+		for h in weather_data['hourly']:
+			if 'time' in h and h['time'] == hour['time']:
+				if 'temperature' in h:
+					hour['temperature'] = h['temperature']
+				if 'windSpeed' in h:
+					hour['windSpeed'] = h['windSpeed']
+				if 'precipPercent' in h:
+					hour['precipPercent'] = h['precipPercent']
+				break
+		
+		#  Update with new values from NOAA query response
+		for item in r['properties']['temperature']['values']:
+			start_time, end_time = parseInterval(item['validTime'])
+			if d >= start_time and d <= end_time:
+				hour['temperature'] = degC2degF(item['value'])
+				break
+		for item in r['properties']['windSpeed']['values']:
+			start_time, end_time = parseInterval(item['validTime'])
+			if d >= start_time and d <= end_time:
+				hour['windSpeed'] = kmph2mph(item['value'])
+				break
+		for item in r['properties']['probabilityOfPrecipitation']['values']:
+			start_time, end_time = parseInterval(item['validTime'])
+			if d >= start_time and d <= end_time:
+				hour['precipPercent'] = item['value']
+				break
+				
+		hourly_data.append(hour)
+
+	weather_data['hourly'] = hourly_data
+else:
+	log('Status code {} returned for {}'.format(response.status_code, weather_data['forecastGridDataURL']))
+	log('The hourly forecasts have not been updated. Some other data elements may have been updated however.')
+
+#-----------------------------   A l e r t s   -----------------------------#
+
+#  Get any active alerts for this location
+response = requests.get(weather_data['alertsURL'], headers=headers)
+if response.status_code == 200:
+	r = response.json()
+	#print(json.dumps(r['features'], indent=4))
+	alerts = []
+	now = datetime.datetime.now(local_tz)
+	for item in r['features']:
+		onset_time = datetime.datetime.strptime(item['properties']['onset'], '%Y-%m-%dT%H:%M:%S%z')
+		expires_time = datetime.datetime.strptime(item['properties']['expires'], '%Y-%m-%dT%H:%M:%S%z')
+		
+		if item['properties']['messageType'] == 'Cancel':
+			#  Remove the referenced alerts from the list
+			for ref in item['properties']['references']:
+				for a in alerts:
+					if a['id'] == ref['identifier']:
+						alerts.remove(a)
+		elif item['properties']['messageType'] == 'Update':
+			#  Replace the referenced alerts with this one  
+			#  (TODO: do we need to do a scan for duplicates after this?)
+			for ref in item['properties']['references']:
+				for a in alerts:
+					if a['id'] == ref['identifier']:
+						a['id'] = item['properties']['id'],
+						a['onset'] = item['properties']['onset']
+						a['expires'] = item['properties']['expires']
+						a['headline'] = item['properties']['headline']
+						a['description'] = item['properties']['description']
+		else:
+			#  Add the alert to the list
+			if onset_time <= now and expires_time >= now:
+				alerts.append({
+					'id': item['properties']['id'],
+					'onset': item['properties']['onset'],
+					'expires': item['properties']['expires'],
+					'headline': item['properties']['headline'],
+					'description': item['properties']['description']
+				})
+
+	#  Put the alerts into the JSON object
+	weather_data['alerts'] = alerts
+	
+else:
+	log('Status code {} returned for {}'.format(response.status_code, weather_data['alertsURL']))
+	log('The alerts have not been updated. Some other data elements may have been updated however.')
+
+#  Serialize the JSON object to a file
+try:	
+	with open(weather_data_file, 'w') as f:
+		json.dump(weather_data, f)
+except Exception as e:
+	log('Failed while writing the JSON object to the "{}" file'.format(weather_data_file))
+	log(e)
+	exit(1)
+	
+#print(json.dumps(weather_data, indent=4))

@@ -1,0 +1,12 @@
+*.ics
+*.lock
+*.old
+*.orig
+backgrounds/*
+calendarSources.php
+darksky-icons
+humidity.json
+js
+vendor
+weather_data.json
+

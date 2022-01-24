@@ -1,0 +1,29 @@
+<?php
+	//  Source URLs for the calendars we'll read and display as well as
+	//  the color to use when displaying the entries from each.
+	//
+	//  Keep this file secure, some of the URLs it contains are only secure
+	//  through obfustication.
+	$sources = [
+		[ 
+			'label' => 'My Calendar',
+			'url' => 'some_url',
+			'color' => '#ffffff'	// white
+		],
+		[
+			'label' => 'My Wife\'s Calendar',
+			'url' => 'some_other_url',
+			'color' => '#adea8e'	// green
+		],
+		[
+			'label' => 'US Holidays',
+			'url' => 'https://www.google.com/calendar/ical/en.usa%23holiday@group.v.calendar.google.com/public/basic.ics',
+			'color' => '#de5bea'	// pink
+		],
+		[
+			'label' => 'Birthdays',
+			'url' => 'birthdays.ics',
+			'color' => '#eae556'	// yellow
+		]
+	];
+?>

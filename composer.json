@@ -1,0 +1,7 @@
+{
+    "require": {
+        "johngrogg/ics-parser": "^2.1"
+    },
+    "require-dev": {
+    }
+}

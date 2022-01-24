@@ -1,0 +1,129 @@
+.weather {
+	display: none;  /*  Initially hidden, until turned on at end of chart function  */
+	position: absolute;
+	left: 0;
+	bottom: 0;
+	width: 100%;
+	color: #ffffff;
+	text-shadow: 1px 1px 0px rgba(0,0,0,.3));
+	clear: both;
+}
+.charts {
+	height: 350px;
+}
+.temp {
+	margin-left: 45px;
+	width: 2100px;
+	margin-bottom: 20px;
+}
+.wind {
+	width: 2085px;
+}
+
+.humidity-section {
+	font-size: 4em;
+	margin-left: 15px;
+}
+.humidity-data {
+	float: left;
+	margin-right: 50px;
+}
+.sensor-time {
+	float: left;
+	font-size: .5em;
+	margin-top: 20px;
+	font-weight: bold;
+	color: #ff1f2e;
+}
+
+.weather-widget {
+	clear: both;
+	margin: 0 auto 20px;
+}
+.widget-container {
+	max-width: 100%;
+}
+.container {
+	display: flex;
+	flex-wrap: wrap;
+	flex-direction: row;
+	margin: 0 3px;
+	padding: 5px 0;
+}
+.current {
+	display: flex;
+	flex-direction: row;
+	justify-content: left;
+	align-items: center; 
+	width: 60%; 
+	float: left;
+	margin-left: 20px;
+}
+.current-temp {
+	margin: 0 5%;
+	font-size: 7em;
+	text-align: center;
+}
+.current-temp span {
+	display: block;
+	text-align: left;
+	font-size: .4em;
+	white-space: nowrap;
+}
+.current-temp span:last-child {
+	font-size: .3em;
+}
+#current-summary {
+	font-size: 3em;
+}
+#current-summary p:first-child {
+	font-weight: bold;
+}
+#current-summary p:last-child {
+	font-size: .9em;
+	margin-top: -1em;
+}
+#daily {
+	display: flex;
+	flex-direction: row;
+	flex-wrap: nowrap;
+	margin-top: 10px;
+	width: 39%;
+	float: left;
+	align-items: center; 
+}
+.daily-forecast {
+	padding: 5px 15px;
+	font-size: 3em;
+	text-align: center;
+}
+.daily-forecast p {
+	margin: 0 auto;
+}
+.daily-forecast p:last-child {
+	margin-top: -3px;
+}
+
+/*  Scrolling alert messages  */
+.alerts_container {
+	margin-top: 25px;
+}
+.alert {
+	width: 100%;
+	background-color: #ff1f2e;
+	white-space: nowrap;
+	overflow: hidden;
+	box-sizing: border-box;
+}
+.alert p {
+	display: inline-block;
+	color: #ffffff;
+	padding-left: 100%;
+/*	animation: marquee 5s linear infinite;   */
+	font-size: 3em;
+	margin: 0;
+}
+@keyframes marquee {
+	0%   { transform: translate(0, 0); }
+	100% { transform: translate(-100%, 0); }
+}
