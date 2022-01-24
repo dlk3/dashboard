@@ -16,6 +16,9 @@
 	<!--
 		//  URL of the file that contains the weather data
 		var weather_data_url = "weather_data.json";
+		
+		//  URL of the background image
+		var background_image_url = "<?php echo $dashboard->randomImage(); ?>";
 	-->
 	</script>
 	
@@ -27,11 +30,6 @@
 	<!--  B A C K G R O U N D   P I C T U R E  -->
 	<div id="backgroundImage" class="abs-zero vignette photo"></div>
 	<div class="abs-zero photo-overlay"></div>
-	<script type="text/javascript">
-	<!--
-		updateBackgroundImage('<?php echo $dashboard->randomImage(); ?>');
-	-->
-	</script>
 	
 	<div class="dashboard-container" id="dashboard-container">
 		

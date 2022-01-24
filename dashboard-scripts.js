@@ -71,11 +71,6 @@ function updateTimeDate() {
 	}, 1000);
 }
 
-//  Change the page background image
-function updateBackgroundImage(url) {
-	document.getElementById("backgroundImage").style.backgroundImage = 'url("' + url + '")';
-}
-
 //  Set the height of the schedule section to fit the page
 function resizeSchedule() {
 	var height = 0;
@@ -92,8 +87,11 @@ function resizeSchedule() {
 	document.getElementById("schedule").style.height = height + "px";
 }
 
-//  Things to do after the page is fully loaded (the DOM has been extablished)
+//  Things to do after the page is fully loaded (the DOM has been established)
 window.addEventListener('load', function() {
+	//  Set the background image
+	document.getElementById("backgroundImage").style.backgroundImage = 'url("' + background_image_url + '")';
+	
 	//  Get the weather data and populate the weather section of the page
 	var xmlHttp = new XMLHttpRequest();
 	xmlHttp.onreadystatechange = function() { 
