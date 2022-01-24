@@ -1,4 +1,5 @@
-//  These colors must match what's defined in "dashboardClass.php"
+//  These colors must match what's defined in "dashboardClass.php" and those 
+//  used in "calendarSources.php"
 var white = '#ffffff';
 var pink = '#de5bea';
 var blue = '#71b0ea';
@@ -209,16 +210,16 @@ function populateWeather(weather_data) {
 		if (hour.precipPercent < min_precip) min_precip = hour.precipPercent;
 		if (hour.precipPercent > max_precip) max_precip = hour.precipPercent;
 	});
-	min_temp = (Math.floor(min_temp / 10) * 10) - 10;
-	max_temp = (Math.floor(max_temp / 10) * 10) + 10;
-	min_precip = (Math.floor(min_precip / 10) * 10) - 10;
+	min_temp = Math.floor(min_temp / 10) * 10;
+	max_temp = Math.round(max_temp / 10) * 10;
+	min_precip = Math.floor(min_precip / 10) * 10;
 	if (min_precip < 0) min_precip = 0;
-	max_precip = (Math.floor(max_precip / 10) * 10) + 10;
+	max_precip = Math.round(max_precip / 10) * 10;
 	if (max_precip > 100) max_precip = 100;
 	if (max_precip < 40) max_precip = 40;
-	min_wind = (Math.floor(min_wind / 10) * 10) - 10;
+	min_wind = Math.floor(min_wind / 10) * 10;
 	if (min_wind < 0) min_wind = 0;
-	max_wind = (Math.floor(max_wind / 10) * 10) + 10;
+	max_wind = Math.round(max_wind / 10) * 10;
 	if (max_wind < 20) $max_wind = 20;
 
 	//  Define additional colors not defined elsewhere
