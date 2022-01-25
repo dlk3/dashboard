@@ -31,6 +31,16 @@ import requests								# dnf install python3-requests
 import sys
 import time
 
+#  HTTP GET request headers used by all NOAA api calls
+#
+#  See this page for info on NOAA's User-Agent string requirements:
+#  https://www.weather.gov/documentation/services-web-api
+request_headers = {
+	'User-Agent': '(David King, dave@daveking.com)',
+	'Accept': 'application/geo+json',
+	'Cache-Control': 'no-cache'
+}
+
 #  Logging messages
 def log(message):
 	timestamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
@@ -77,55 +87,19 @@ def parseInterval(time_str, tz_string=None):
 		list.append(None)
 	return list
 
-#  Get latitude, longitude, weather_data_file from the command line
-#  Log file name can also be supplied as an optional 4th argument
-logfile = None
-if len(sys.argv) < 5:
-	print('Please provide the latitude, longitude, output, and log file name values on the command line:')
-	print('\t{} latitude longitude outputfilename logfilename'.format(sys.argv[0]))
-	exit(1)
-try:
-	latitude = float(sys.argv[1])
-	longitude = float(sys.argv[2])
-except Exception as e:
-	print('Latitude and longitude must be valid floating point numbers')
-	print('\t{} latitude longitude outputfilename logfilename'.format(sys.argv[0]))
-	exit(1)
-weather_data_file = sys.argv[3]
-logfile = sys.argv[4]
+#---------------------------   L o c a t i o n   ---------------------------#
 
-#  See if writing to the log works
-log('{} running'.format(sys.argv[0]))
-
-#  Run the process on a continuous loop with a 30 minute sleep between iterations
-while True:
-
-	#  Read in the stored JSON object, if it exists
-	try:
-		with open(weather_data_file, 'r') as f:
-			weather_data = json.load(f)
-	except FileNotFoundError:
-		weather_data = {}
-
-	#  Run this initial section on a 5 minute loop until it completes successfully
-	ok_to_continue = False
-	while not ok_to_continue:
-		
-		#  Assume everything will turn out ok
-		ok_to_continue = True
+#  Update the location information section of the weather_data JSON object
+def getLocationInfo(latitude, longitude):
+	global weather_data
+	
+	#  Run this on a 5 minute loop until it completes successfully
+	while True:
 		
 		#  Get the NOAA location info, timezone and forecast URL links for this location 
 		#  from their "points" service, based on the lat/long.
-		#
-		#  See this page for info on NOAA's User-Agent string requirements:
-		#  https://www.weather.gov/documentation/services-web-api
-		headers = {
-			'User-Agent': '(David King, dave@daveking.com)',
-			'Accept': 'application/geo+json',
-			'Cache-Control': 'no-cache'
-		}
 		url = 'https://api.weather.gov/points/{},{}'.format(latitude, longitude)
-		response = requests.get(url, headers=headers)
+		response = requests.get(url, headers=request_headers)
 		if response.status_code == 200:
 			r = response.json()
 
@@ -142,22 +116,18 @@ while True:
 			tz_now = datetime.datetime.now(pytz.timezone(weather_data['timezone']))
 			weather_data['tz_offset'] = tz_now.utcoffset().total_seconds() / 3600
 			
-			#  Create a Python tzinfo object for later use
-			local_tz = datetime.timezone(datetime.timedelta(hours=weather_data['tz_offset']))
-			
-			#  Put a timestamp into the JSON object
-			weather_data['generated'] = datetime.datetime.now(local_tz).strftime('%Y-%m-%dT%H:%M:%S%z')
+			#  Put a location information updated timestamp into the JSON object
+			weather_data['locationInfoUpdated'] = datetime.datetime.now().strftime('%Y-%m-%dT%H:%M:%S')
 			
 		else:
 			log('Status code {} returned for {}'.format(response.status_code, url))
 			log('Will wait 5 minutes and then retry')
-			ok_to_continue = False
 			time.sleep(5 * 60)
-			break
+			continue
 
 		#  Get the list of NOAA observation stations associated with this location
 		#  and figure out which one is closest to us
-		response = requests.get(weather_data['observationStationListURL'], headers=headers)
+		response = requests.get(weather_data['observationStationListURL'], headers=request_headers)
 		if response.status_code == 200:
 			r = response.json()
 			nearest = -1
@@ -169,14 +139,26 @@ while True:
 		else:
 			log('Status code {} returned for {}'.format(response.status_code, weather_data['observationStationListURL']))
 			log('Will wait 5 minutes and then retry')
-			ok_to_continue = False
 			time.sleep(5 * 60)
-			break
+			continue
 
-		#--------------------------   C u r r e n t l y   --------------------------#
+		return True
+		
+#--------------------------   C u r r e n t l y   --------------------------#
 
+#  Update the current conditions section of the weather_data JSON object
+def getCurrentConditions():
+	global weather_data
+	
+	#  Run this on a 5 minute loop until it completes successfully
+	ok_to_continue = False
+	while not ok_to_continue:
+		
+		#  Assume that everything will end well
+		ok_to_continue = True
+		
 		#  Get the current conditions from that observation station
-		response = requests.get(weather_data['observationStationURL'] + '/observations/latest', headers=headers)
+		response = requests.get(weather_data['observationStationURL'] + '/observations/latest', headers=request_headers)
 		if response.status_code == 200:
 			r = response.json()
 			if 'current' not in weather_data:
@@ -188,7 +170,7 @@ while True:
 				weather_data['current']['icon'] = r['properties']['icon'].split('?')[0] + "?size=large"
 			else:
 				ok_to_continue = False
-			if 'description' in r['properties'] and r['properties']['description']:
+			if 'textDescription' in r['properties'] and r['properties']['textDescription']:
 				weather_data['current']['description'] = r['properties']['textDescription']
 			else:
 				ok_to_continue = False
@@ -200,34 +182,38 @@ while True:
 				weather_data['current']['wind_speed'] = kmph2mph(r['properties']['windSpeed']['value'])
 			else:
 				ok_to_continue = False
-			if ok_to_continue:
-				#  Pass a flag to the daily step to fill in data from NOAA's daily data
-				need_current_forecasts = True 
-			else:
+			if not ok_to_continue:
 				#  If data was missing
 				log(json.dumps(r['properties'], indent=4))
 				log('Properties we need were missing from {}'.format(weather_data['observationStationURL'] + '/observations/latest'))
 				log('Will wait 5 minutes and then retry')
 				time.sleep(5 * 60)
-				break
 		else:
 			#  If the requests.get failed
 			log('Status code {} returned for {}'.format(response.status_code, weather_data['observationStationURL'] + '/observations/latest'))
 			log('Will wait 5 minutes and then retry')
 			ok_to_continue = False
 			time.sleep(5 * 60)
-			break
-
-	#  From here on we can accept missing data, we'll fill it in using what we
-	#  have from the previous run
-	
-	#------------------------------   D a i l y   ------------------------------#
-
-	#  Define a location for the astral function that calculates sunrise and sunset
-	astral_location = LocationInfo('dummy_name', 'dummy_region', weather_data['timezone'], latitude, longitude)
 			
+	return True
+	
+#------------------------------   D a i l y   ------------------------------#
+
+#  Update the daily forecasts section of thr qweather_data JSON object
+def getDailyForecasts():
+	global weather_data
+	
+	#  Define a location for the astral function that calculates sunrise and sunset
+	astral_location = LocationInfo('dummy_name', 'dummy_region', weather_data['timezone'], weather_data['latitude'], weather_data['longitude'])
+	
+	#  Create a tzinfo object for the local timezone
+	local_tz = datetime.timezone(datetime.timedelta(hours=weather_data['tz_offset']))
+	
+	#  A "only do it once" flag for updating the current forecasts in the for loop below
+	have_current_forecasts = False
+	
 	#  Get the daily forecasts for the next week for this location
-	response = requests.get(weather_data['forecastURL'], headers=headers)
+	response = requests.get(weather_data['forecastURL'], headers=request_headers)
 	if response.status_code == 200:
 		r = response.json()
 		#print(json.dumps(r['properties']['periods'], indent=4))
@@ -244,16 +230,17 @@ while True:
 				period_starttime = datetime.datetime.strptime(period['startTime'], '%Y-%m-%dT%H:%M:%S%z')
 				period_endtime = datetime.datetime.strptime(period['endTime'], '%Y-%m-%dT%H:%M:%S%z')
 				if period_starttime.strftime('%Y-%m-%d') == day['date']:
-					#  Update current forecasts (take first ones we find)
-					if need_current_forecasts:
+					#  Update current forecasts (take the first ones we find)
+					if not have_current_forecasts:
 					
 						#  TODO: I'm not sure whether these are nulls or empty
 						#  strings when no data is returned and I want to find out
 						if period['shortForecast'] and period['detailedForecast']:
 							if period['shortForecast'] != '' and period['detailedForecast'] != '':
+								#  Update the current conditions section with the current short-term forecast
 								weather_data['current']['shortForecast'] = period['shortForecast']
 								weather_data['current']['detailedForecast'] = period['detailedForecast']
-								need_current_forecasts = False
+								have_current_forecasts = True
 							else:
 								log('NOAA returned period[\'shortForecast\'] or period[\'detailedForecast\'] as an empty string in the daily data')
 								log(period)
@@ -303,13 +290,24 @@ while True:
 	else:
 		log('Status code {} returned for {}'.format(response.status_code, weather_data['forecastURL']))
 		log('The daily weather forcasts have not been updated. Some other data elements may have been updated however.')
+		return False
 
-	#-----------------------------   H o u r l y   -----------------------------#
+	return True
+	
+#-----------------------------   H o u r l y   -----------------------------#
 
+#  Update the hourly forecasts section of the weather_data JSON object
+def getHourlyForecasts():
+	global weather_data
+	
+	#  Create a tzinfo object for the local timezone
+	local_tz = datetime.timezone(datetime.timedelta(hours=weather_data['tz_offset']))
+			
 	#  Get the hourly forecasts for the next 48 hours for this location
-	response = requests.get(weather_data['forecastGridDataURL'], headers=headers)
+	response = requests.get(weather_data['forecastGridDataURL'], headers=request_headers)
 	if response.status_code == 200:
 		r = response.json()
+		#print(json.dumps(r['properties'], indent=4))
 		if 'hourly' not in weather_data:
 			weather_data['hourly'] = {}
 		hourly_data = []
@@ -352,11 +350,21 @@ while True:
 	else:
 		log('Status code {} returned for {}'.format(response.status_code, weather_data['forecastGridDataURL']))
 		log('The hourly forecasts have not been updated. Some other data elements may have been updated however.')
+		return False
+		
+	return True
 
-	#-----------------------------   A l e r t s   -----------------------------#
+#-----------------------------   A l e r t s   -----------------------------#
 
+#  Update the alerts section of the weather_data JSON object
+def getAlerts():
+	global weather_data
+	
+	#  Create a tzinfo object for the local timezone
+	local_tz = datetime.timezone(datetime.timedelta(hours=weather_data['tz_offset']))
+			
 	#  Get any active alerts for this location
-	response = requests.get(weather_data['alertsURL'], headers=headers)
+	response = requests.get(weather_data['alertsURL'], headers=request_headers)
 	if response.status_code == 200:
 		r = response.json()
 		#print(json.dumps(r['features'], indent=4))
@@ -400,18 +408,73 @@ while True:
 	else:
 		log('Status code {} returned for {}'.format(response.status_code, weather_data['alertsURL']))
 		log('The alerts have not been updated. Some other data elements may have been updated however.')
-
-	#  Serialize the JSON object to a file
-	try:	
-		with open(weather_data_file, 'w') as f:
-			json.dump(weather_data, f)
-	except Exception as e:
-		log('Failed while writing the JSON object to the "{}" file'.format(weather_data_file))
-		log(e)
-		exit(1)
+		return False
 		
-	#print(json.dumps(weather_data, indent=4))
+	return True
 
-	#  Wait for 30 minutes
-	time.sleep(30 * 60)
+#-------------------------------   M a i n   -------------------------------#
+	
+def main():
+	global logfile, weather_data
+	
+	#  Get latitude, longitude, weather_data_file from the command line
+	#  Log file name can also be supplied as an optional 4th argument
+	logfile = None
+	if len(sys.argv) < 5:
+		print('Please provide the latitude, longitude, output, and log file name values on the command line:')
+		print('\t{} latitude longitude outputfilename logfilename'.format(sys.argv[0]))
+		exit(1)
+	try:
+		latitude = float(sys.argv[1])
+		longitude = float(sys.argv[2])
+	except Exception as e:
+		print('Latitude and longitude must be valid floating point numbers')
+		print('\t{} latitude longitude outputfilename logfilename'.format(sys.argv[0]))
+		exit(1)
+	weather_data_file = sys.argv[3]
+	logfile = sys.argv[4]
 
+	#  See if writing to the log works
+	log('{} running'.format(sys.argv[0]))
+
+	#  Run the process on a continuous loop with a 30 minute sleep between iterations
+	while True:
+
+		#  Read in the stored JSON object, if it exists
+		try:
+			with open(weather_data_file, 'r') as f:
+				weather_data = json.load(f)
+		except FileNotFoundError:
+			weather_data = {}
+
+		#  Update the location information section if it doesn't exist or
+		#  if it is more than one day old.
+		if 'locationInfoUpdated' not in weather_data or datetime.datetime.now() - datetime.datetime.strptime(weather_data['locationInfoUpdated'], '%Y-%m-%dT%H:%M:%S') > datetime.timedelta(days=1):
+			getLocationInfo(latitude, longitude)
+		
+		#  Update the weather data
+		getCurrentConditions()
+		getDailyForecasts()
+		getHourlyForecasts()
+		getAlerts()
+		
+		#  Put a weather data updated timestamp into the JSON object
+		local_tz = datetime.timezone(datetime.timedelta(hours=weather_data['tz_offset']))
+		weather_data['weatherDataUpdated'] = datetime.datetime.now(local_tz).strftime('%Y-%m-%dT%H:%M:%S%z')
+		
+		#  Serialize the JSON object to a file
+		try:	
+			with open(weather_data_file, 'w') as f:
+				json.dump(weather_data, f)
+		except Exception as e:
+			log('Failed while writing the JSON object to the "{}" file'.format(weather_data_file))
+			log(e)
+			exit(1)
+			
+		#print(json.dumps(weather_data, indent=4))
+
+		#  Wait for 30 minutes
+		time.sleep(30 * 60)
+
+if __name__ == '__main__':
+	main()
