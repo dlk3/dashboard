@@ -1,8 +1,12 @@
 <?php
 
+	//  Set the PHP local timezone to be used
+	date_default_timezone_set('America/New_York');
+
 	// Load johngrogg/ics-parser package
 	require_once 'vendor/autoload.php';
 	use ICal\ICal;
+	
 	
 	class Dashboard {
 				
@@ -44,10 +48,13 @@
 			//  together.
 			$days = [];
 			for ($i = 0; $i < 365; $i++) {
-				$today = 
+				$start = new DateTimeImmutable("midnight +" . $i . " day");
+				$end = new DateTimeImmutable("midnight +" . ($i + 1) . " day - 1 second");
 				$days[$i] = array (
-					'start' => strtotime("midnight +" . $i . " day"),
-					'end' => strtotime("midnight +" . ($i + 1) . " day") - 1,
+					//'start' => strtotime("midnight +" . $i . " day"),
+					//'end' => strtotime("midnight +" . ($i + 1) . " day") - 1,
+					'start' => $start->getTimeStamp(),
+					'end' => $end->getTimestamp(),
 					'events' => array()
 				);
 			}
@@ -60,25 +67,41 @@
 					$ical = new Ical();
 					$ical->initUrl($source['url'], $username = null, $password = null, $userAgent = null);
 
-					// print_r($ical);
 					if ($ical->eventCount > 0) {
 						foreach ($ical->cal['VEVENT'] as $event) {
-							if (strtotime($event['DTEND_array'][1]) >= strtotime("midnight +0 day")) {
-								// print_r($event);
+							$dtstart = new DateTimeImmutable($event['DTSTART']);
+							$dtend = new DateTimeImmutable($event['DTEND']);
+							$midnight = new DateTimeImmutable("midnight +0 day");
+							if ($dtend->getTimestamp() >= $midnight->getTimestamp()) {
 								for ($i = 0; $i < 365; $i++) {
-									if (strtotime($event['DTSTART_array'][1]) > $days[$i]['end']) {
+									if ($dtstart->getTimestamp() > $days[$i]['end']) {
 										continue;
 									} 
-									if (strtotime($event['DTEND_array'][1]) <= $days[$i]['start']) {
+									if ($dtend->getTimestamp() <= $days[$i]['start']) {
 										continue;
 									}
+									$num_days = $dtstart->diff($dtend)->format('%r%a');
+									// print('$num_days = ' . $num_days . "\n");
+									if ($num_days == 0) {
+										$num_days = 1;
+									} else {
+										#  If this is an all day event (midnight to midnight)
+										$start_date = new DateTimeImmutable($dtstart->format('Y-m-d') . " +1 day");
+										$end_date = new DateTimeImmutable($dtend->format('Y-m-d'));
+										if ($start_date == $end_date) {
+											$num_days = 1;
+										}
+									}
 									$new_event = array(
-										'start' => strtotime($event['DTSTART_array'][1]),
-										'end' => strtotime($event['DTEND_array'][1]),
+										'start' => $dtstart->getTimestamp(),
+										'end' => $dtend->getTimestamp(),
 										'summary' => str_replace('\\', '', str_replace('\n', ', ', $event['SUMMARY'])),
 										'color' => $source['color'],
-										'num-days' => 1 + (new DateTime(date('Y-m-d', strtotime($event['DTEND_array'][1]) - 1)))->diff(new DateTime(date('Y-m-d', strtotime($event['DTSTART_array'][1]))))->format('%a')
+										'num_days' => $num_days
 									);
+									//if ($num_days > 1) {
+									//	print_r($new_event);
+									//}
 									if (isset($event['LOCATION'])) {
 										$new_event['location'] = "at " .  str_replace('\\', '', str_replace('\n', ', ', $event['LOCATION']));
 									}
@@ -121,18 +144,22 @@
 				
 					echo "\t\t\t\t<div class=\"day-container\">\n";
 					echo "\t\t\t\t\t<div class=\"day\">\n";
-					if ($day['start'] == strtotime("midnight +0 day")) {
+					$day_date = (new DateTimeImmutable)->setTimeStamp($day['start'])->format('Y-m-d');
+					$today_date = (new DateTimeImmutable("midnight +0 day"))->format('Y-m-d');
+					$tomorrow_date = (new DateTimeImmutable("midnight +1 day"))->format('Y-m-d');
+					if ($day_date == $today_date) {
 						echo "\t\t\t\t\t\t<div class=\"day-name\">Today</div>\n";
-					} else if ($day['start'] == strtotime("midnight +1 day")) {
+					} else if ($day_date == $tomorrow_date) {
 						echo "\t\t\t\t\t\t<div class=\"day-name\">Tomorrow</div>\n";
 					} else {
-						echo "\t\t\t\t\t\t<div class=\"day-name\">" . date('l', $day['start']) . ", ";
-						if (date('Y', $day['start']) != date('Y')) {
+						$day_name = (new DateTimeImmutable)->setTimeStamp($day['start'])->format('l');
+						echo "\t\t\t\t\t\t<div class=\"day-name\">" . $day_name . ", ";
+						if ((new DateTimeImmutable($day_date))->format('Y') != (new DateTimeImmutable($today_date))->format('Y')) {
 							$format_str = 'M j, Y';
 						} else {
 							$format_str = 'M j';
 						}
-						echo "<span class=\"dark\">" . date($format_str, $day['start']) . "</span></div>\n";
+						echo "<span class=\"dark\">" . (new DateTimeImmutable($day_date))->format($format_str) . "</span></div>\n";
 					}
 					echo "\t\t\t\t\t\t<ul>\n";
 					foreach($day['events'] as $event) {
@@ -151,20 +178,23 @@
 								echo "\t\t\t\t\t\t\t\t\t</div>\n";
 								echo "\t\t\t\t\t\t\t\t\t<div class=\"hour\">12</div>\n";
 							} else {
+								$dtstart = (new DateTimeImmutable)->setTimestamp($event['start']);
 								echo "\t\t\t\t\t\t\t\t\t<div class=\"minute-container\">\n";
-								echo "\t\t\t\t\t\t\t\t\t\t<span class=\"minute\">" . date('i', $event['start']) . "</span>\n";
+								echo "\t\t\t\t\t\t\t\t\t\t<span class=\"minute\">" . $dtstart->format('i') . "</span>\n";
 								echo "\t\t\t\t\t\t\t\t\t\t<br />\n";
-								echo "\t\t\t\t\t\t\t\t\t\t<span class=\"ampm\">" . date('A', $event['start']) . "</span>\n";
+								echo "\t\t\t\t\t\t\t\t\t\t<span class=\"ampm\">" . $dtstart->format('A') . "</span>\n";
 								echo "\t\t\t\t\t\t\t\t\t</div>\n";
-								echo "\t\t\t\t\t\t\t\t\t<div class=\"hour\">" . date('g', $event['start']) . "</div>\n";
+								echo "\t\t\t\t\t\t\t\t\t<div class=\"hour\">" . $dtstart->format('g') . "</div>\n";
 							}
 						}
 						echo "\t\t\t\t\t\t\t\t</div>\n";
 						echo "\t\t\t\t\t\t\t\t<div class\"event-summary\">\n";
 						echo "\t\t\t\t\t\t\t\t\t" . $event['summary'];
-						if ($event['num-days'] > 1) {
-							$day_num = 1 + (new DateTime(date('Y-m-d', $day['start'])))->diff(new DateTime(date('Y-m-d', $event['start'])))->format('%a');
-							echo " (" . $day_num . "/" . $event['num-days'] . ")\n";
+						if ($event['num_days'] > 1) {
+							$day_start = new DateTimeImmutable($day_date);
+							$dtstart = (new DateTimeImmutable)->setTimeStamp($event['start']);
+							$day_num = $dtstart->diff($day_start)->format('%r%a') + 1;
+							echo " (" . $day_num . "/" . $event['num_days'] . ")\n";
 						} else {
 							echo "\n";
 						}
@@ -174,9 +204,9 @@
 							$x = '';  //  NOOP, events that don't end today don't show end times
 						} else {
 							if (isset($event['location'])) {
-								$event['location'] = "until " . date('g:ia', $event['end']) . " " . $event['location'];
+								$event['location'] = "until " . (new DateTimeImmutable)->setTimestamp($event['end'])->format('g:ia') . " " . $event['location'];
 							} else {
-								$event['location'] = "until " . date('g:ia', $event['end']);
+								$event['location'] = "until " . (new DateTimeImmutable)->setTimestamp($event['end'])->format('g:ia');
 							}
 						}
 						if (isset($event['location'])) {
