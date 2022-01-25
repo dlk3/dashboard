@@ -83,7 +83,7 @@
 									if ($num_days == 0) {
 										$num_days = 1;
 									} else {
-										#  If this is an all day event (midnight to midnight)
+										//  Check for an all day event, midnight to midnight
 										$start_date = new DateTimeImmutable($dtstart->format('Y-m-d') . " +1 day");
 										$end_date = new DateTimeImmutable($dtend->format('Y-m-d'));
 										if ($start_date == $end_date) {
