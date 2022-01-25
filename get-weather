@@ -116,9 +116,6 @@ def getLocationInfo(latitude, longitude):
 			tz_now = datetime.datetime.now(pytz.timezone(weather_data['timezone']))
 			weather_data['tz_offset'] = tz_now.utcoffset().total_seconds() / 3600
 			
-			#  Put a location information updated timestamp into the JSON object
-			weather_data['locationInfoUpdated'] = datetime.datetime.now().strftime('%Y-%m-%dT%H:%M:%S')
-			
 		else:
 			log('Status code {} returned for {}'.format(response.status_code, url))
 			log('Will wait 5 minutes and then retry')
@@ -142,6 +139,9 @@ def getLocationInfo(latitude, longitude):
 			time.sleep(5 * 60)
 			continue
 
+		#  Put a location information updated timestamp into the JSON object
+		weather_data['locationInfoUpdated'] = datetime.datetime.now().strftime('%Y-%m-%dT%H:%M:%S')
+			
 		return True
 		
 #--------------------------   C u r r e n t l y   --------------------------#
