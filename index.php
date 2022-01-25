@@ -1,10 +1,13 @@
 <?php
+	//  Set the local timezone for PHP 
+	date_default_timezone_set('America/New_York');
+
 	/* The Dashboard class object contains all of the configuration settings
 	 * for the dashboard.  It also contains functions used to generate the
 	 * schedule section of the page.
 	 */
 	require_once 'dashboardClass.php';
-	$dashboard = new Dashboard();
+	$dashboard = new Dashboard();	
 ?>
 <html>
 <head>

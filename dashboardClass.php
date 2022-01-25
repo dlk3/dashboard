@@ -1,12 +1,8 @@
 <?php
 
-	//  Set the PHP local timezone to be used
-	date_default_timezone_set('America/New_York');
-
 	// Load johngrogg/ics-parser package
 	require_once 'vendor/autoload.php';
 	use ICal\ICal;
-	
 	
 	class Dashboard {
 				
@@ -51,8 +47,6 @@
 				$start = new DateTimeImmutable("midnight +" . $i . " day");
 				$end = new DateTimeImmutable("midnight +" . ($i + 1) . " day - 1 second");
 				$days[$i] = array (
-					//'start' => strtotime("midnight +" . $i . " day"),
-					//'end' => strtotime("midnight +" . ($i + 1) . " day") - 1,
 					'start' => $start->getTimeStamp(),
 					'end' => $end->getTimestamp(),
 					'events' => array()
@@ -69,8 +63,13 @@
 
 					if ($ical->eventCount > 0) {
 						foreach ($ical->cal['VEVENT'] as $event) {
+							//print_r($event);
 							$dtstart = new DateTimeImmutable($event['DTSTART']);
-							$dtend = new DateTimeImmutable($event['DTEND']);
+							if (isset($event['DTEND'])) {
+								$dtend = new DateTimeImmutable($event['DTEND']);
+							} else {
+								$dtend = $dtstart;
+							}
 							$midnight = new DateTimeImmutable("midnight +0 day");
 							if ($dtend->getTimestamp() >= $midnight->getTimestamp()) {
 								for ($i = 0; $i < 365; $i++) {
@@ -81,7 +80,6 @@
 										continue;
 									}
 									$num_days = $dtstart->diff($dtend)->format('%r%a');
-									// print('$num_days = ' . $num_days . "\n");
 									if ($num_days == 0) {
 										$num_days = 1;
 									} else {
@@ -99,9 +97,6 @@
 										'color' => $source['color'],
 										'num_days' => $num_days
 									);
-									//if ($num_days > 1) {
-									//	print_r($new_event);
-									//}
 									if (isset($event['LOCATION'])) {
 										$new_event['location'] = "at " .  str_replace('\\', '', str_replace('\n', ', ', $event['LOCATION']));
 									}
