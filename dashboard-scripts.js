@@ -156,8 +156,8 @@ function populateWeather(weather_data) {
 			}
 			//  Check for what's missing
 			if (!day.icon) day.icon = '';
-			if (!day.high) day.high = '';
-			if (!day.low) day.low = '';
+			if (!day.high) day.high = '?';
+			if (!day.low) day.low = '?';
 			//  Append the markup for this day
 			html_str = html_str + "<div class=\"daily-forecast\">" +
 				"<p class=\"day-name\">" + day_name + "</p>" +
