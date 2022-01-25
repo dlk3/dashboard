@@ -1,6 +1,6 @@
 /*  Styles for the underlying base page  */
 body, html {
-	background: none transpart;
+	background-color: transparent;
 	padding: 0;
 	margin: 0;
 	width: 100%;
