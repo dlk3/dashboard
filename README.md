@@ -21,6 +21,10 @@ Other components of the system that are not included in this repository:
 + <code>backgrounds/*</code> - a directory of images that are used as page backgrounds for the dashboard.  The images should be pre-formatted to fit the dimensions of the dashboard display.  No attempt to adjust the images is made.   An image is randomly selected every time the page is refreshed.  Any files in this directory with jpg, jpeg, png or gif extensions will be used.  I use portraits of family members, relatives, and pets as my page backgrounds.
 + CanvasJS - a Javascript utility used to create temperature, humidity, and wind speed forecast graphs on the dashboard.  Download it from [canvasjs.com](https://canvasjs.com).  Place <code>canvas.min.js</code> in a subdirectory called <code>js/canvasjs/</code> or modify the link in <code>index.php</code> that points to its location.  Note that the free version of this utility overlays a watermark on graphs that it draws.  Purchasing a licensed copy of the code will remove the watermark.  (Or you can hack the script to remove it.  Instructions will not be provided.)
 
+## Weather Data Sources
+
+This system pulls weather data from REST web services provided by NOAA and Synoptics.  You must get a (free) API token from Synoptics in order to use their services.  See https://developers.synopticdata.com/mesonet/ for information.  NOAA's web services are open.  No token is required.  See https://www.weather.gov/documentation/services-web-api for information.
+
 ## Testing
 
 I use a Docker image of a PHP web server to test the code on my local workstation:

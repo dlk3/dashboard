@@ -7,7 +7,7 @@ After=network-online.target
 Type=simple
 User=<A userid with write access to /opt/dashboard>
 Group=<That user's group id>
-ExecStart=/opt/dashboard/get-weather YOUR_LATITUDE YOUR_LONGITUDE /opt/dashboard/weather_data.json /opt/dashboard/get-weather.log
+ExecStart=/opt/dashboard/get-weather YOUR_LATITUDE YOUR_LONGITUDE YOUR_SYNOPTICS_API_TOKEN /opt/dashboard/weather_data.json /opt/dashboard/get-weather.log
 Restart=always
 
 [Install]

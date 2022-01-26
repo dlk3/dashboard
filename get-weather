@@ -18,6 +18,10 @@
 #
 #  NOAA updates their current observations roughly every 30 minutes and forecasts
 #  about once an hour.
+#
+#  Temperature and wind speed observations from MESONET weather stations are used
+#  when available as they can be more accurate than the NOAA weather stations.
+#  See https://developers.synopticdata.com/mesonet for info on their REST API.
 #################################################################################
 
 from astral import LocationInfo				# dnf install python3-astral
@@ -62,6 +66,15 @@ def kmph2mph(kmph):
 		return round(kmph * 0.621371)
 	except Exception as e:
 		log('kmph2mph function threw an exception for value "{}"'.format(kmph))
+		log(e)
+		return None
+		
+#  Meters per second to miles per hour
+def mps2mph(mps):
+	try:
+		return round(mps * 2.237)
+	except Exception as e:
+		log('mps2mph function threw an exception for value "{}"'.format(mps))
 		log(e)
 		return None
 		
@@ -129,10 +142,11 @@ def getLocationInfo(latitude, longitude):
 			r = response.json()
 			nearest = -1
 			for feature in r['features']:
-				distance = great_circle((latitude, longitude), (feature['geometry']['coordinates'][1], feature['geometry']['coordinates'][0]))
+				distance = great_circle((latitude, longitude), (feature['geometry']['coordinates'][1], feature['geometry']['coordinates'][0])).miles
 				if nearest == -1 or distance < nearest:
 					nearest = distance
 					weather_data['observationStationURL'] = feature['id']
+					weather_data['observationStationDistance'] = distance
 		else:
 			log('Status code {} returned for {}'.format(response.status_code, weather_data['observationStationListURL']))
 			log('Will wait 5 minutes and then retry')
@@ -145,19 +159,22 @@ def getLocationInfo(latitude, longitude):
 		return True
 		
 #--------------------------   C u r r e n t l y   --------------------------#
-
+		
 #  Update the current conditions section of the weather_data JSON object
 def getCurrentConditions():
-	global weather_data
+	global weather_data	
 	
-	#  Run this on a 5 minute loop until it completes successfully
 	ok_to_continue = False
 	while not ok_to_continue:
 		
 		#  Assume that everything will end well
 		ok_to_continue = True
-		
-		#  Get the current conditions from that observation station
+
+		#  Clear out any MESONET metadata from a prior run
+		if 'mesonetObservationStation' in weather_data:
+			del weather_data['mesonetObservationStation']
+			
+		#  Get the current conditions from the closest NOAA observation station
 		response = requests.get(weather_data['observationStationURL'] + '/observations/latest', headers=request_headers)
 		if response.status_code == 200:
 			r = response.json()
@@ -174,16 +191,36 @@ def getCurrentConditions():
 				weather_data['current']['description'] = r['properties']['textDescription']
 			else:
 				ok_to_continue = False
-			if 'temperature' in r['properties'] and r['properties']['temperature']['value'] is not None:
+				
+			#  Get temp and wind speed from a nearby MESONET station, if we can
+			mesonet_data = getMESONET(weather_data['observationStationDistance'])
+			
+			used_mesonet = False
+			if 'temperature' in mesonet_data:
+				weather_data['current']['temperature'] = mesonet_data['temperature']
+				used_mesonet = True
+			elif 'temperature' in r['properties'] and r['properties']['temperature']['value'] is not None:
 				weather_data['current']['temperature'] = degC2degF(r['properties']['temperature']['value'])
 			else:
 				ok_to_continue = False
-			if 'windSpeed' in r['properties'] and r['properties']['windSpeed']['value'] is not None:
+				
+			if 'wind_speed' in mesonet_data:
+				weather_data['current']['wind_speed'] = mesonet_data['wind_speed']
+				used_mesonet = True
+			elif 'windSpeed' in r['properties'] and r['properties']['windSpeed']['value'] is not None:
 				weather_data['current']['wind_speed'] = kmph2mph(r['properties']['windSpeed']['value'])
 			else:
 				ok_to_continue = False
+			
+			#  If we used MESONET data then add the station metadata	
+			if used_mesonet:
+				weather_data['mesonetObservationStation'] = {}
+				weather_data['mesonetObservationStation']['name'] = mesonet_data['mesonetObservationStationName']
+				weather_data['mesonetObservationStation']['id'] = mesonet_data['mesonetObservationStationID']
+				weather_data['mesonetObservationStation']['distance'] = mesonet_data['mesonetObservationStationDistance']
+				
+			#  If data was missing
 			if not ok_to_continue:
-				#  If data was missing
 				log(json.dumps(r['properties'], indent=4))
 				log('Properties we need were missing from {}'.format(weather_data['observationStationURL'] + '/observations/latest'))
 				log('Will wait 5 minutes and then retry')
@@ -197,6 +234,66 @@ def getCurrentConditions():
 			
 	return True
 	
+#  Get a better reading of the temperature and wind speed from a MESONET
+#  weather station closer to us, if there is one
+def getMESONET(distance):
+
+	#  Only use MESONET station observations if they are less than one hour old
+	def getSensorReading(sensor_variable_name):
+		keys = sensor_variable_name.keys()
+		for key in keys:
+			first_key = key
+			break
+		local_tz = datetime.timezone(datetime.timedelta(hours=weather_data['tz_offset']))
+		now = datetime.datetime.now(local_tz)
+		o_time = datetime.datetime.strptime(station['OBSERVATIONS'][first_key]['date_time'], '%Y-%m-%dT%H:%M:%S%z')
+		if now - o_time < datetime.timedelta(hours=1):
+			return station['OBSERVATIONS'][first_key]['value']
+		return
+
+	#  Default result = empty dictionary
+	mesonet_data = {} 
+	
+	#  Ask for data from all of the stations within "distance" (in miles) of our lat/long
+	mesonet_url = 'https://api.synopticdata.com/v2/stations/latest?radius={},{},{}&token={}'.format(weather_data['latitude'], weather_data['longitude'], distance, synoptic_token)
+	response = requests.get(mesonet_url, headers=request_headers)
+	if response.status_code == 200:
+		r = response.json()
+		#print(json.dumps(r, indent=4))
+		#  It might be true that there are no closer MESONET stations.
+		#  Check if we got back data from at least one station.
+		if r['SUMMARY']['NUMBER_OF_OBJECTS'] > 0:
+			for station in r['STATION']:
+				#  We want the closest, so we check them all
+				if station['DISTANCE'] < distance:
+					#print(json.dumps(station, indent=4))
+					if 'air_temp' in station['SENSOR_VARIABLES'] and 'wind_speed' in station['SENSOR_VARIABLES']:
+						station_used = False
+						result = getSensorReading(station['SENSOR_VARIABLES']['air_temp'])
+						if result != None:
+							mesonet_data['temperature'] = degC2degF(result)	
+							station_used = True
+						result = getSensorReading(station['SENSOR_VARIABLES']['wind_speed'])
+						if result != None:
+							mesonet_data['wind_speed'] = mps2mph(result)
+							station_used = True
+						if station_used:
+							distance = station['DISTANCE']
+							mesonet_data['mesonetObservationStationDistance'] = station['DISTANCE']
+							mesonet_data['mesonetObservationStationName'] = station['NAME']
+							mesonet_data['mesonetObservationStationID'] = station['STID']
+							#print('MESONET station name: {}'.format(mesonet_data['mesonetObservationStationName']))
+							#print('MESONET station id: {}'.format(mesonet_data['mesonetObservationStationID']))
+							#print('MESONET station distance: {}'.format(mesonet_data['mesonetObservationStationDistance']))
+							#print('MESONET station temperature: {}'.format(mesonet_data['temperature']))
+							#print('MESONET station wind speed: {}'.format(mesonet_data['wind_speed']))
+	else:
+		#  If the requests.get failed
+		log('Status code {} returned for {}'.format(response.status_code, mesonet_url))
+		log('No results returned to caller')
+		
+	return mesonet_data
+			
 #------------------------------   D a i l y   ------------------------------#
 
 #  Update the daily forecasts section of thr qweather_data JSON object
@@ -415,24 +512,25 @@ def getAlerts():
 #-------------------------------   M a i n   -------------------------------#
 	
 def main():
-	global logfile, weather_data
+	global logfile, weather_data, synoptic_token
 	
 	#  Get latitude, longitude, weather_data_file from the command line
 	#  Log file name can also be supplied as an optional 4th argument
 	logfile = None
-	if len(sys.argv) < 5:
-		print('Please provide the latitude, longitude, output, and log file name values on the command line:')
-		print('\t{} latitude longitude outputfilename logfilename'.format(sys.argv[0]))
+	if len(sys.argv) < 6:
+		print('Please provide the latitude, longitude, Synoptic API token, output, and log file name values on the command line:')
+		print('\t{} latitude longitude api_token outputfilename logfilename'.format(sys.argv[0]))
 		exit(1)
 	try:
 		latitude = float(sys.argv[1])
 		longitude = float(sys.argv[2])
 	except Exception as e:
 		print('Latitude and longitude must be valid floating point numbers')
-		print('\t{} latitude longitude outputfilename logfilename'.format(sys.argv[0]))
+		print('\t{} latitude longitude api_token outputfilename logfilename'.format(sys.argv[0]))
 		exit(1)
-	weather_data_file = sys.argv[3]
-	logfile = sys.argv[4]
+	synoptic_token = sys.argv[3]
+	weather_data_file = sys.argv[4]
+	logfile = sys.argv[5]
 
 	#  See if writing to the log works
 	log('{} running'.format(sys.argv[0]))
