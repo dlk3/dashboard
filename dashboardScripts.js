@@ -220,6 +220,24 @@ function populateWeather(weather_data) {
 	max_wind = Math.round(max_wind / 10) * 10 + 5;
 	if (max_wind < 20) $max_wind = 20;
 
+	//  Set striplines values for graphs based on sunrise/sunset times
+	var striplines = [];
+	if (new Date(weather_data.hourly[0].time) < new Date(weather_data.daily[0].sunrise)) {
+		striplines[0] = new Date(0);
+		striplines[1] = new Date(weather_data.daily[0].sunrise);
+		striplines[2] = new Date(weather_data.daily[0].sunset);
+		striplines[3] = new Date(weather_data.daily[1].sunrise);
+		striplines[4] = new Date(weather_data.daily[1].sunset);
+		striplines[5] = new Date(weather_data.daily[2].sunrise);
+	} else {
+		striplines[0] = new Date(weather_data.daily[0].sunset);
+		striplines[1] = new Date(weather_data.daily[1].sunrise);
+		striplines[2] = new Date(weather_data.daily[1].sunset);
+		striplines[3] = new Date(weather_data.daily[2].sunrise);
+		striplines[4] = new Date(weather_data.daily[2].sunset);
+		striplines[5] = new Date(weather_data.daily[3].sunrise);
+	}
+	
 	//  Define additional colors not defined elsewhere
 	var black = "#000000";
 	var gray = "rgba(0, 0, 0, .4)";
@@ -254,18 +272,18 @@ function populateWeather(weather_data) {
 			// Sunrise/sunset
 			stripLines: [
 				{
-					startValue: new Date(weather_data.daily[0].sunset),
-					endValue: new Date(weather_data.daily[1].sunrise),
+					startValue: striplines[0],
+					endValue: striplines[1],
 					color: gray
 				},
 				{
-					startValue: new Date(weather_data.daily[1].sunset),
-					endValue: new Date(weather_data.daily[2].sunrise),
+					startValue: striplines[2],
+					endValue: striplines[3],
 					color: gray
 				},
 				{
-					startValue: new Date(weather_data.daily[2].sunset),
-					endValue: new Date(weather_data.daily[3].sunrise),
+					startValue: striplines[4],
+					endValue: striplines[5],
 					color: gray
 				}
 			],
@@ -318,18 +336,18 @@ function populateWeather(weather_data) {
 			//  Sunrise/sunset
 			stripLines: [
 				{
-					startValue: new Date(weather_data.daily[0].sunset),
-					endValue: new Date(weather_data.daily[1].sunrise),
+					startValue: striplines[0],
+					endValue: striplines[1],
 					color: gray
 				},
 				{
-					startValue: new Date(weather_data.daily[1].sunset),
-					endValue: new Date(weather_data.daily[2].sunrise),
+					startValue: striplines[2],
+					endValue: striplines[3],
 					color: gray
 				},
 				{
-					startValue: new Date(weather_data.daily[2].sunset),
-					endValue: new Date(weather_data.daily[3].sunrise),
+					startValue: striplines[4],
+					endValue: striplines[5],
 					color: gray
 				}
 			],
