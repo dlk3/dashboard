@@ -115,7 +115,7 @@ function populateWeather(weather_data) {
 	document.getElementById("current-icon").src = weather_data.current.icon;
 	
 	var temp_trend = "";
-	if (weather_data.current.temperature) {
+	if (weather_data.current.temperature != null) {
 		if (weather_data.current.temperature > weather_data.hourly[1].temperature) {
 			temp_trend = " and falling";
 		} else if (weather_data.current.temperature < weather_data.hourly[1].temperature) {
@@ -126,14 +126,14 @@ function populateWeather(weather_data) {
 	} else {
 		weather_data.current.temperature = '?';
 	}
-	if (!weather_data.current.wind_speed) weather_data.current.wind_speed = '?';
+	if (weather_data.current.wind_speed === null) weather_data.current.wind_speed = '?';
 	var html_str = "<strong>" + weather_data.current.temperature + "&deg;</strong>" +
 		"<span>" + temp_trend + "</span>" +
 		"<span>Wind: " + weather_data.current.wind_speed + " mph</span>";
 	document.getElementById("current-temp").innerHTML = html_str;
 	
-	if (!weather_data.current.description) weather_data.current.description = "";
-	if (!weather_data.current.shortForecast) weather_data.current.shortForecast = "";
+	if (weather_data.current.description === null) weather_data.current.description = "";
+	if (weather_data.current.shortForecast === null) weather_data.current.shortForecast = "";
 	html_str = "<p>" + weather_data.current.description + "</p><p>" + weather_data.current.shortForecast + "</p>";
 	document.getElementById("current-summary").innerHTML = html_str;
 	
@@ -144,7 +144,7 @@ function populateWeather(weather_data) {
 	var offset = now.getTimezoneOffset() * 60000;
 	weather_data.daily.forEach(function (day) {
 		//  Only include those days that have data, i.e. have an icon set
-		if (day.icon) {
+		if (day.icon != null) {
 			//  Get the 3-letter abbreviation for the day name for this date
 			var date = new Date(day.date); 
 			//  Have to adjust the date to the timezone used by this server for this to work properly
@@ -155,9 +155,9 @@ function populateWeather(weather_data) {
 				day_name = "TODAY";
 			}
 			//  Check for what's missing
-			if (!day.icon) day.icon = '';
-			if (!day.high) day.high = '?';
-			if (!day.low) day.low = '?';
+			if (day.icon === null) day.icon = '';
+			if (day.high === null) day.high = '?';
+			if (day.low === null) day.low = '?';
 			//  Append the markup for this day
 			html_str = html_str + "<div class=\"daily-forecast\">" +
 				"<p class=\"day-name\">" + day_name + "</p>" +
