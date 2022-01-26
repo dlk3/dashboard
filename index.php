@@ -13,7 +13,7 @@
 <head>
 	<meta http-equiv="refresh" content="<?php echo $dashboard->page_refresh_seconds; ?>; url=/dashboard" />
 	
-	<script type="text/javascript" src="dashboard-scripts.js"></script>
+	<script type="text/javascript" src="dashboardScripts.js"></script>
 	<script type="text/javascript" src="js/canvasjs/canvasjs.min.js"></script>
 	<script type="text/javascript">
 	<!--
