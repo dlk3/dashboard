@@ -166,19 +166,19 @@ def getCurrentConditions():
 
 			#  Check to make sure all the data we need is there and put it into
 			#  weather_data['current'] if it is
-			if 'icon' in r['properties'] and r['properties']['icon']:
+			if 'icon' in r['properties'] and r['properties']['icon'] is not None:
 				weather_data['current']['icon'] = r['properties']['icon'].split('?')[0] + "?size=large"
 			else:
 				ok_to_continue = False
-			if 'textDescription' in r['properties'] and r['properties']['textDescription']:
+			if 'textDescription' in r['properties'] and r['properties']['textDescription'] is not None:
 				weather_data['current']['description'] = r['properties']['textDescription']
 			else:
 				ok_to_continue = False
-			if 'temperature' in r['properties'] and r['properties']['temperature']['value']:
+			if 'temperature' in r['properties'] and r['properties']['temperature']['value'] is not None:
 				weather_data['current']['temperature'] = degC2degF(r['properties']['temperature']['value'])
 			else:
 				ok_to_continue = False
-			if 'windSpeed' in r['properties'] and r['properties']['windSpeed']['value']:
+			if 'windSpeed' in r['properties'] and r['properties']['windSpeed']['value'] is not None:
 				weather_data['current']['wind_speed'] = kmph2mph(r['properties']['windSpeed']['value'])
 			else:
 				ok_to_continue = False
