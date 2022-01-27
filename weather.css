@@ -118,7 +118,7 @@
 .alert p {
 	display: inline-block;
 	color: #ffffff;
-	padding-left: 100%;
+/*	padding-left: 100%;	 */
 /*	animation: marquee 5s linear infinite;   */
 	font-size: 3em;
 	margin: 0;

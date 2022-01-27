@@ -78,7 +78,7 @@
 			<div id="tempAndPrecipChart" class="charts temp"></div>
 			<div id="windChart" class="charts wind"></div>
 			<div id="alerts" class="alerts_container"></div>
-			<div><style="font-size: 1.5em; margin-left: 15px;">Weather Data by NOAA</style></div>
+			<div><style="font-size: 1.5em; margin-left: 15px;">Weather Data by <a href="https://www.weather.gov/documentation/services-web-api#">NOAA</a> and <a href="https://developers.synopticdata.com/mesonet/">Synoptics Mesonet</a></style></div>
 		</section>
 	</div>
 </body>

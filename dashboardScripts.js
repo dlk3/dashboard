@@ -172,7 +172,7 @@ function populateWeather(weather_data) {
 	//  Populate the alerts section
 	html_str = ''
 	weather_data.alerts.forEach(function (alert) {
-		html_str = html_str + "<div class=\"alert\"><p>" + alert.description + "</p></div>";
+		html_str = html_str + "<div class=\"alert\"><p>" + alert.headline + "</p></div>";
 	});
 	document.getElementById("alerts").innerHTML = html_str;
 	
