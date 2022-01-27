@@ -1,5 +1,5 @@
 [Unit]
-Description=NOAA Weather Data Collector
+Description=Dashboard Weather Data Collector
 Requires=network-online.target
 After=network-online.target
 
