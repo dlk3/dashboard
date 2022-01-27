@@ -21,9 +21,11 @@ Other components of the system that are not included in this repository:
 + <code>backgrounds/*</code> - a directory of images that are used as page backgrounds for the dashboard.  The images should be pre-formatted to fit the dimensions of the dashboard display.  No attempt to adjust the images is made.   An image is randomly selected every time the page is refreshed.  Any files in this directory with jpg, jpeg, png or gif extensions will be used.  I use portraits of family members, relatives, and pets as my page backgrounds.
 + CanvasJS - a Javascript utility used to create temperature, humidity, and wind speed forecast graphs on the dashboard.  Download it from [canvasjs.com](https://canvasjs.com).  Place <code>canvas.min.js</code> in a subdirectory called <code>js/canvasjs/</code> or modify the link in <code>index.php</code> that points to its location.  Note that the free version of this utility overlays a watermark on graphs that it draws.  Purchasing a licensed copy of the code will remove the watermark.  (Or you can hack the script to remove it.  Instructions will not be provided.)
 
-## Weather Data Sources
+## Data Sources
 
-This system pulls weather data from REST web services provided by NOAA and Synoptics.  You must get a (free) API token from Synoptics in order to use their services.  See https://developers.synopticdata.com/mesonet/ for information.  NOAA's web services are open.  No token is required.  See https://www.weather.gov/documentation/services-web-api for information.
+The schedule section of the page will consume any ICS-format data feed that can be accessed via a URL of some type.  Most major calendar services like Google Calendar or Apple's iCal/iCloud calendar service provide these.
+
+This system pulls weather data from REST web services provided by NOAA and Synoptics.  You must register for a (free) API token from Synoptics in order to use their services.  See https://developers.synopticdata.com/mesonet/ for information.  NOAA's web services are open.  No token is required.  See https://www.weather.gov/documentation/services-web-api for information.
 
 ## Testing
 
@@ -59,6 +61,6 @@ This is the way I did it on my web server.  Adjust as required:
         &lt;/Directory>
 </pre>
 + I created the authentication users file:<br /><code>sudo mkdir -p /usr/local/apache/passwd</code><br /><code>sudo htpasswd -c /usr/local/apache/passwd/dashboard *userid*</code><br /><code> sudo chown -R apache:apache /usr/local/apache</code><br /><code>sudo chmod 700 /usr/local/apache/passwd</code><br /><code>sudo chmod 600 /usr/local/apache/passwd/*</code><br />
-+ I configured my IoT humidity sensor to call the <code>dashboard/humidity.php</code> web service so that it would write a <code>humidity.json</code> file in the <code>/opt/dashboard</code> directory.  Since the web service runs as the "apache" user, that user needs write access to update this file.<br /><code>touch /opt/dashboard/humidity.json</code><br /><code>sudo chown apache:apache /opt/dashboard/humidity.json</code>
++ I configured my IoT humidity sensor to call the <code>dashboard/humidity.php</code> web service so that it would write a <code>humidity.json</code> file in the <code>/opt/dashboard</code> directory.  Since the web service runs as the "apache" user, that user needs write access to update this file:<br /><code>touch /opt/dashboard/humidity.json</code><br /><code>sudo chown apache:apache /opt/dashboard/humidity.json</code>
 
 That is all!

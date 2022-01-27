@@ -323,6 +323,19 @@ def getDailyForecasts():
 			day['sunrise'] = the_sun['sunrise'].strftime('%Y-%m-%dT%H:%M:%S%z')
 			day['sunset'] = the_sun['sunset'].strftime('%Y-%m-%dT%H:%M:%S%z')
 			
+			#  Use data from the prior run as a default
+			for old_day in weather_data['daily']:
+				if old_day['date'] == day['date']:
+					if 'icon' in old_day:
+						day['icon'] = old_day['icon']
+					if 'high' in old_day:
+						day['high'] = old_day['high']
+					if 'low' in old_day:
+						day['low'] = old_day['low']
+					break	
+			
+			#  Get new data
+			found_new_icon = False
 			for period in r['properties']['periods']:
 				period_starttime = datetime.datetime.strptime(period['startTime'], '%Y-%m-%dT%H:%M:%S%z')
 				period_endtime = datetime.datetime.strptime(period['endTime'], '%Y-%m-%dT%H:%M:%S%z')
@@ -348,16 +361,16 @@ def getDailyForecasts():
 					#  Day-time data
 					if period['isDaytime']:
 						day['icon'] = period['icon'].split('?')[0] + "?size=large"
-						day['high'] = period['temperature']
+						found_new_icon = True
+						if 'temperature' in period and period['temperature'] is not None:
+							day['high'] = period['temperature']
 					#  Night-time data
 					else:
-						if 'icon' not in day:
+						if not found_new_icon:
 							day['icon'] = period['icon'].split('?')[0] + "?size=large"
-						#  If there wasn't any day-time period data for this date,
-						#  use the current temp as the high
-						if 'high' not in day:
-							day['high'] = weather_data['current']['temperature']
-						day['low'] = period['temperature']
+							found_new_icon = True
+						if 'temperature' in period and period['temperature'] is not None:
+							day['low'] = period['temperature']
 					
 					#  Swap high and low if they are reversed
 					if ('high', 'low') in day:
@@ -365,18 +378,6 @@ def getDailyForecasts():
 							t = day['high']
 							day['high'] = day['low']
 							day['low'] = t
-			
-			#  Fill in any missing values with data from previous run
-			if 'daily' in weather_data:
-				for old_day in weather_data['daily']:
-					if old_day['date'] == day['date']:
-						if 'icon' not in day and 'icon' in old_day:
-							day['icon'] = old_day['icon']
-						if 'high' not in day and 'high' in old_day:
-							day['high'] = old_day['high']
-						if 'low' not in day and 'low' in old_day:
-							day['low'] = old_day['low']
-						break
 			
 			#  Add the day's data to the array			
 			daily_data.append(day)
