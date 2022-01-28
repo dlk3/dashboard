@@ -156,14 +156,22 @@ function populateWeather(weather_data) {
 			}
 			//  Check for what's missing
 			if (day.icon == null) day.icon = '';
-			if (day.high == null) day.high = '?';
-			if (day.low == null) day.low = '?';
+			if (day.high == null) {
+				day.high = '&nbsp;';
+			} else {
+				day.high = day.high + "&deg;";
+			}
+			if (day.low == null) {
+				day.low = '&nbsp;';
+			} else {
+				day.low = day.low + "&deg;";
+			}
 			//  Append the markup for this day
 			html_str = html_str + "<div class=\"daily-forecast\">" +
 				"<p class=\"day-name\">" + day_name + "</p>" +
 				"<img width=\"80\" height=\"80\" src=\"" + day.icon + "\" alt=\"weather Icon\">" +
-				"<p class=\"high-temp\">" + day.high + "&deg;</p>" +
-				"<p class=\"low-temp\">" + day.low + "&deg;</p>" +
+				"<p class=\"high-temp\">" + day.high + "</p>" +
+				"<p class=\"low-temp\">" + day.low + "</p>" +
 				"</div>";
 		}
 	});
