@@ -273,17 +273,17 @@ function populateWeather(weather_data) {
 				{
 					startValue: striplines[0],
 					endValue: striplines[1],
-					color: 'gray'
+					color: gray
 				},
 				{
 					startValue: striplines[2],
 					endValue: striplines[3],
-					color: 'gray'
+					color: gray
 				},
 				{
 					startValue: striplines[4],
 					endValue: striplines[5],
-					color: 'gray'
+					color: gray
 				}
 			],
 			titleFontColor: white,
@@ -337,17 +337,17 @@ function populateWeather(weather_data) {
 				{
 					startValue: striplines[0],
 					endValue: striplines[1],
-					color: 'gray'
+					color: gray
 				},
 				{
 					startValue: striplines[2],
 					endValue: striplines[3],
-					color: 'gray'
+					color: gray
 				},
 				{
 					startValue: striplines[4],
 					endValue: striplines[5],
-					color: 'gray'
+					color: gray
 				}
 			],
 			titleFontColor: white,
