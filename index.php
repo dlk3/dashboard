@@ -22,9 +22,29 @@
 		
 		//  URL of the background image
 		var background_image_url = "<?php echo $dashboard->randomImage(); ?>";
+		
+		//  In order to ensure consistent color, the colors defined in this list
+		//  should match those defined in the list of CSS variables below.
+		var white = '#ffffff';
+		var pink = '#de5bea';
+		var blue = '#71b0ea';
+		var yellow = '#eae556';
+		var green = '#adea8e';
+		var red = '#ff1f2e';
 	-->
 	</script>
-	
+	<style>
+		/*  In order to ensure consistent color, the colors defined in this list  */
+		/*  should match those defined in the list of Javascript variables above. */
+		:root {
+			--white: #ffffff;
+			--pink: #de5bea;
+			--blue: #71b0ea;
+			--yellow: ##eae556;
+			--green: #adea8e;
+			--red: #ff1f2e;
+		}
+	</style>
 	<link rel="stylesheet" href="basepage.css">
 	<link rel="stylesheet" href="schedule.css">
 	<link rel="stylesheet" href="weather.css">

@@ -4,7 +4,7 @@
 	left: 0;
 	bottom: 0;
 	width: 100%;
-	color: #ffffff;
+	color: var(--white);
 	text-shadow: 1px 1px 0px rgba(0,0,0,.3));
 	clear: both;
 }
@@ -110,7 +110,7 @@
 }
 .alert {
 	width: 100%;
-	background-color: #ff1f2e;
+	background-color: var(--red);
 	white-space: nowrap;
 	overflow: hidden;
 	box-sizing: border-box;

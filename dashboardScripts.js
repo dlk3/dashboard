@@ -1,12 +1,3 @@
-//  These colors must match what's defined in "dashboardClass.php" and those 
-//  used in "calendarSources.php"
-var white = '#ffffff';
-var pink = '#de5bea';
-var blue = '#71b0ea';
-var yellow = '#eae556';
-var green = '#adea8e';
-var red = '#ff1f2e';
-
 //  Draws a progress bar across the top of the page
 function updateProgressBarWidth(refresh_seconds, start_seconds = 0) {
 	if (start_seconds == 0) {
@@ -282,17 +273,17 @@ function populateWeather(weather_data) {
 				{
 					startValue: striplines[0],
 					endValue: striplines[1],
-					color: gray
+					color: 'gray'
 				},
 				{
 					startValue: striplines[2],
 					endValue: striplines[3],
-					color: gray
+					color: 'gray'
 				},
 				{
 					startValue: striplines[4],
 					endValue: striplines[5],
-					color: gray
+					color: 'gray'
 				}
 			],
 			titleFontColor: white,
@@ -346,17 +337,17 @@ function populateWeather(weather_data) {
 				{
 					startValue: striplines[0],
 					endValue: striplines[1],
-					color: gray
+					color: 'gray'
 				},
 				{
 					startValue: striplines[2],
 					endValue: striplines[3],
-					color: gray
+					color: 'gray'
 				},
 				{
 					startValue: striplines[4],
 					endValue: striplines[5],
-					color: gray
+					color: 'gray'
 				}
 			],
 			titleFontColor: white,

@@ -4,8 +4,8 @@
 	font-size: 6em;
 	height: 0px;
 	overflow: hidden;
-	-webkit-mask-image: linear-gradient(to bottom, white 90%, transparent);
-	mask-image: linear-gradient(to bottom, white 90%, transparent);
+	-webkit-mask-image: linear-gradient(to bottom, var(--white) 90%, transparent);
+	mask-image: linear-gradient(to bottom, var(--white) 90%, transparent);
 }
 .legend {
 	font-size: .6em;
