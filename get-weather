@@ -324,15 +324,16 @@ def getDailyForecasts():
 			day['sunset'] = the_sun['sunset'].strftime('%Y-%m-%dT%H:%M:%S%z')
 			
 			#  Use data from the prior run as a default
-			for old_day in weather_data['daily']:
-				if old_day['date'] == day['date']:
-					if 'icon' in old_day:
-						day['icon'] = old_day['icon']
-					if 'high' in old_day:
-						day['high'] = old_day['high']
-					if 'low' in old_day:
-						day['low'] = old_day['low']
-					break	
+			if 'daily' in weather_data:
+				for old_day in weather_data['daily']:
+					if old_day['date'] == day['date']:
+						if 'icon' in old_day:
+							day['icon'] = old_day['icon']
+						if 'high' in old_day:
+							day['high'] = old_day['high']
+						if 'low' in old_day:
+							day['low'] = old_day['low']
+						break	
 			
 			#  Get new data
 			found_new_icon = False
@@ -468,7 +469,7 @@ def getAlerts():
 		#print(json.dumps(r['features'], indent=4))
 		alerts = []
 		now = datetime.datetime.now(local_tz)
-		for item in r['features']:
+		for item in r['features'][::-1]:
 			onset_time = datetime.datetime.strptime(item['properties']['onset'], '%Y-%m-%dT%H:%M:%S%z')
 			expires_time = datetime.datetime.strptime(item['properties']['expires'], '%Y-%m-%dT%H:%M:%S%z')
 			
