@@ -306,7 +306,7 @@ function populateWeather(weather_data) {
 			valueFormatString: "#0'%'",
 			includeZero: false,
 			minimum: min_precip,
-			// maximum: max_precip,
+			maximum: max_precip,
 			labelFontColor: blue,
 			labelFontSize: 30,
 			lineColor: blue,
